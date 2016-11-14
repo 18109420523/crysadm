@@ -1,4 +1,4 @@
-_author__ = 'powergx'
+__author__ = 'powergx'
 from flask import Flask,render_template
 import config, socket, redis
 import time
@@ -127,6 +127,7 @@ def save_history(username):
     today_data['pdc'] = 0
     today_data['last_speed'] = 0
     today_data['deploy_speed'] = 0
+    today_data['uncollect'] = 0
     today_data['balance'] = 0
     today_data['income'] = 0
     today_data['speed_stat'] = list()
@@ -151,6 +152,8 @@ def save_history(username):
 
         today_data['pdc'] += this_pdc
         today_data.get('pdc_detail').append(dict(mid=data.get('privilege').get('mid'), pdc=this_pdc))
+
+        today_data['uncollect'] += data.get('mine_info').get('td_not_in_a')
         today_data['balance'] += data.get('income').get('r_can_use')
         today_data['income'] += data.get('income').get('r_h_a')
         today_data.get('produce_stat').append(dict(mid=data.get('privilege').get('mid'), hourly_list=data.get('produce_info').get('hourly_list')))
@@ -376,9 +379,6 @@ def check_report(user, cookies, user_info):
                     平均速度(KB/S)
                 </TH>
                 <TH style="BORDER-TOP: #c1dad7 1px solid; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #cae8ea; BORDER-BOTTOM: #c1dad7 1px solid; TEXT-TRANSFORM: uppercase; COLOR: #4f6b72; PADDING-BOTTOM: 6px; TEXT-ALIGN: left; PADDING-TOP: 6px; FONT: bold 11px 'Trebuchet MS', Verdana, Arial, Helvetica, sans-serif; PADDING-LEFT: 12px; LETTER-SPACING: 2px; PADDING-RIGHT: 6px" scope=col>
-                    上传估量(GB)
-                </TH>
-                <TH style="BORDER-TOP: #c1dad7 1px solid; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #cae8ea; BORDER-BOTTOM: #c1dad7 1px solid; TEXT-TRANSFORM: uppercase; COLOR: #4f6b72; PADDING-BOTTOM: 6px; TEXT-ALIGN: left; PADDING-TOP: 6px; FONT: bold 11px 'Trebuchet MS', Verdana, Arial, Helvetica, sans-serif; PADDING-LEFT: 12px; LETTER-SPACING: 2px; PADDING-RIGHT: 6px" scope=col>
                     今日收益(￥)
                 </TH>
             </TR>
@@ -409,9 +409,6 @@ def check_report(user, cookies, user_info):
                     """ + ('%.1f' % (td_speed[stat['mid']])) + """
                 </TD>
                 <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #fff; BORDER-BOTTOM: #c1dad7 1px solid; COLOR: #4f6b72; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
-                    """ + ('%.1f' % (td_speed[stat['mid']]*86400/1024/1024)) + """
-                </TD>
-                <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #fff; BORDER-BOTTOM: #c1dad7 1px solid; COLOR: #4f6b72; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
                     """ + ('%.2f' % (td_produce[stat['mid']])) + """
                 </TD>
             </TR>
@@ -425,9 +422,6 @@ def check_report(user, cookies, user_info):
                     """ + ('%.1f' % (td_speed[stat['mid']])) + """
                 </TD>
                 <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #f5fafa; BORDER-BOTTOM: #c1dad7 1px solid; COLOR: #797268; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
-                    """ + ('%.1f' % (td_speed[stat['mid']]*86400/1024/1024)) + """
-                </TD>
-                <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: #f5fafa; BORDER-BOTTOM: #c1dad7 1px solid; COLOR: #797268; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
                     """ + ('%.2f' % (td_produce[stat['mid']])) + """
                 </TD>
             </TR>
@@ -439,9 +433,6 @@ def check_report(user, cookies, user_info):
                 </TH>
                 <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: none transparent scroll repeat 0% 0%; COLOR: #4f6b72; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
                     """ + ('%.1f' % (s_sum)) + """
-                </TD>
-                <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: none transparent scroll repeat 0% 0%; COLOR: #4f6b72; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
-                    """ + ('%.1f' % (s_sum*86400/1024/1024)) + """
                 </TD>
                 <TD style="FONT-SIZE: 11px; BORDER-RIGHT: #c1dad7 1px solid; BACKGROUND: none transparent scroll repeat 0% 0%; COLOR: #4f6b72; PADDING-BOTTOM: 6px; PADDING-TOP: 6px; PADDING-LEFT: 12px; PADDING-RIGHT: 6px">
                     """ + ('%.2f' % (p_sum)) + """
@@ -776,7 +767,7 @@ if __name__ == '__main__':
             'searcht_crystal_interval':360*60,
             'revenge_crystal_interval':300*60,
             'getaward_crystal_interval':240*60,
-            'get_online_user_data_interval':30,
+            'get_online_user_data_interval':10,
             'get_offline_user_data_interval':600,
             'clear_offline_user_interval':60,
             'select_auto_task_user_interval':10*60,
@@ -817,7 +808,7 @@ if __name__ == '__main__':
     # 执行自动监测时间，单位为秒，默认为300秒。
     # 每5分钟检测一次矿机状态
     threading.Thread(target=timer, args=(auto_detect, config_info['auto_detect_interval'])).start()
-    # 刷新在线用户数据，单位为秒，默认为30秒。
+    # 刷新在线用户数据，单位为秒，默认为10秒。
     # 每30秒刷新一次在线用户数据
     threading.Thread(target=timer, args=(get_online_user_data, config_info['get_online_user_data_interval'])).start()
     # 刷新离线用户数据，单位为秒，默认为60秒。
